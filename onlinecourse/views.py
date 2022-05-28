@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 # <HINT> Import any new Models here
-from .models import Course, Enrollment, Question, Choice, Submission
+from .models import Course, Enrollment, Question, Choice, Submission, Lesson
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
@@ -37,7 +37,6 @@ def registration_request(request):
         else:
             context['message'] = "User already exists."
             return render(request, 'onlinecourse/user_registration_bootstrap.html', context)
-
 
 def login_request(request):
     context = {}
@@ -103,13 +102,11 @@ def enroll(request, course_id):
     return HttpResponseRedirect(reverse(viewname='onlinecourse:course_details', args=(course.id,)))
 
 def submit(request, course_id):
-    user = request.user
-    course = get_object_or_404(Course, pk=course_id)
-    enrollment_obj = Enrollment.objects.get(user, course)
+    enrollment_obj = Enrollment.objects.get(user=request.user, course=course_id)
     submission_obj = Submission.objects.create(enrollment=enrollment_obj)
     for answer in extract_answers(request):
-        submission_obj.choice.add(answer)
-    return redirect('/onlinecourse/course/'+str(course_id)+'/submission/'+str(sub.id)+'/result/') 
+        submission_obj.chocies.add(answer)
+    return redirect('/onlinecourse/course/'+str(course_id)+'/submission/'+str(submission_obj.id)+'/result/') 
     
 def extract_answers(request):
     submitted_anwsers = []
@@ -131,17 +128,17 @@ def show_exam_result(request, course_id, submission_id):
     context = {}
     course = get_object_or_404(Course, pk=course_id)
     submission = get_object_or_404(Submission, pk=submission_id)
-    lesson = Lesson.objects.get(course)
-    choice_id = submission.choice.all()
+    lesson = Lesson.objects.get(course=course_id)
+    choice_id = submission.chocies.all()
     score = 0
     total = 0
-    for question in lesson.qusetion_set.all():
+    for question in lesson.question_set.all():
         for choice in question.choice_set.all():
             if choice.is_correct:
                 total+=1
     for choice in choice_id:
         if choice.is_correct:
-            ques = get_object_or_404(Question, pk=question_id.id)
+            ques = get_object_or_404(Question, pk=choice.question_id.id)
             score+=ques.grade
     grade = (score/total)*100
     
